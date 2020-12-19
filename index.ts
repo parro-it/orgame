@@ -1,19 +1,14 @@
-import { readFile, readdir } from 'fs/promises';
-import markdownIt from 'markdown-it';
+import { filter } from './src/async-utils';
+import { getFiles, rebuildNeeded, pickRenderAction } from './src/filetree';
 
-const md = markdownIt();
-const result = md.render('# markdown-it rulezz!');
-console.log(result)
-
-async function renderIndex() {
-    const mdContent = await readFile('readme.md', 'utf-8');
-    console.log(md.render(mdContent));
-}
-
-walkSrc().catch(err => console.error(err));
-
-async function walkSrc() {
-    for await (const file of getFiles('./fixtures/docs', './fixtures/out')) {
-        console.log(file.src, '-->', file.out);
+async function build(srcDir: string, outDir: string) {
+    const allFiles = getFiles(srcDir, outDir);
+    const toBeRebuilt = filter(allFiles, rebuildNeeded);
+    for await (const entry of toBeRebuilt) {
+        const action = pickRenderAction(entry);
+        await action(entry);
+        console.log({ entry, action });
     }
 }
+
+build(process.argv[2], process.argv[3]).catch((err) => console.error(err));

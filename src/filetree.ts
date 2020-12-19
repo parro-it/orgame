@@ -1,6 +1,6 @@
 import { readdir, stat } from 'fs/promises';
 import { resolve, extname } from 'path';
-import { copyFile, renderMarkdown } from './actions';
+import { copyAnyFile, renderMarkdown } from './actions';
 
 export type FileEntry = {
     src: string;
@@ -43,6 +43,6 @@ export function pickRenderAction(entry: FileEntry): RenderAction {
         case '.md':
             return renderMarkdown;
         default:
-            return copyFile;
+            return copyAnyFile;
     }
 }

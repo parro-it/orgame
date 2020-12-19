@@ -26,7 +26,7 @@ test('getFiles walks all file in source directory', async () => {
 
 test('pickRenderAction choose a RenderAction suitable for the source file', async () => {
     const action = pickRenderAction({ src: 'tsts.anyextension', out: 'tsts.anyextension' });
-    expect(action.name).toBe('copyFile');
+    expect(action.name).toBe('copyAnyFile');
 
     const action2 = pickRenderAction({ src: 'test.md', out: '' });
     expect(action2.name).toBe('renderMarkdown');

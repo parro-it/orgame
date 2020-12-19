@@ -1,11 +1,11 @@
-export type Predicate<EntryType> = (entry: EntryType) => boolean;
+export type Predicate<EntryType> = (entry: EntryType) => Promise<boolean>;
 
 export async function* filter<EntryType>(
     source: AsyncIterable<EntryType>,
     predicate: Predicate<EntryType>,
 ): AsyncIterable<EntryType> {
     for await (const entry of source) {
-        if (predicate(entry)) {
+        if (await predicate(entry)) {
             yield entry;
         }
     }
