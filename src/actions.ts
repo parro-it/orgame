@@ -14,8 +14,9 @@ export async function renderMarkdown(entry: FileEntry): Promise<void> {
         const template = compile(entry.layout);
         htmlContent = template({ content: htmlContent });
     }
-
-    await writeFile(entry.out, htmlContent);
+    const outFile = entry.out.replace(/\.md$/, '.html');
+    console.log(outFile);
+    await writeFile(outFile, htmlContent);
 }
 
 export function copyAnyFile(entry: FileEntry): Promise<void> {

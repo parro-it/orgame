@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from 'fs/promises';
+import { mkdir, readdir, readFile, stat } from 'fs/promises';
 import { resolve, extname, join } from 'path';
 import { copyAnyFile, renderMarkdown, renderHTML } from './actions';
 
@@ -13,6 +13,7 @@ type RenderAction = (entry: FileEntry) => Promise<void>;
 export async function* getFiles(srcDir: string, outDir: string): AsyncIterable<FileEntry> {
     const dirents = await readdir(srcDir, { withFileTypes: true });
     const layout = await readFile(join(srcDir, '.layout'), 'utf-8').catch(() => null);
+    await mkdir(outDir, { recursive: true }).catch(() => null);
 
     for (const dirent of dirents) {
         if (dirent.name == '.layout') {
