@@ -1,23 +1,29 @@
-import { readdir, stat } from 'fs/promises';
-import { resolve, extname } from 'path';
-import { copyAnyFile, renderMarkdown } from './actions';
+import { readdir, readFile, stat } from 'fs/promises';
+import { resolve, extname, join } from 'path';
+import { copyAnyFile, renderMarkdown, renderHTML } from './actions';
 
 export type FileEntry = {
     src: string;
     out: string;
+    layout: string | null;
 };
 
 type RenderAction = (entry: FileEntry) => Promise<void>;
 
 export async function* getFiles(srcDir: string, outDir: string): AsyncIterable<FileEntry> {
     const dirents = await readdir(srcDir, { withFileTypes: true });
+    const layout = await readFile(join(srcDir, '.layout'), 'utf-8').catch(() => null);
+
     for (const dirent of dirents) {
+        if (dirent.name == '.layout') {
+            continue;
+        }
         const src = resolve(srcDir, dirent.name);
         const out = resolve(outDir, dirent.name);
         if (dirent.isDirectory()) {
             yield* getFiles(src, out);
         } else {
-            yield { src, out };
+            yield { src, out, layout };
         }
     }
 }
@@ -42,6 +48,8 @@ export function pickRenderAction(entry: FileEntry): RenderAction {
     switch (ext) {
         case '.md':
             return renderMarkdown;
+        case '.html':
+            return renderHTML;
         default:
             return copyAnyFile;
     }

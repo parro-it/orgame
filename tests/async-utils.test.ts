@@ -13,7 +13,7 @@ test('range return an iterable of n numbers', async () => {
 
 test('filter filters entries on a predicate', async () => {
     const result = [];
-    for await (const n of filter(range(2, 10), (n) => n % 2 == 0)) {
+    for await (const n of filter(range(2, 10), async (n) => n % 2 == 0)) {
         result.push(n);
     }
     expect(result).toStrictEqual([2, 4, 6, 8]);
