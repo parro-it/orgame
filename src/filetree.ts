@@ -8,7 +8,7 @@ export type FileEntry = {
     layout: string | null;
 };
 
-type RenderAction = (entry: FileEntry) => Promise<void>;
+type RenderAction = (entry: FileEntry) => Promise<boolean>;
 
 export async function* getFiles(srcDir: string, outDir: string): AsyncIterable<FileEntry> {
     const dirents = await readdir(srcDir, { withFileTypes: true });

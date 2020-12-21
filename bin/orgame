@@ -2,4 +2,4 @@
 SOURCE_FILE=`realpath "${BASH_SOURCE[0]}"`
 SOURCE_DIR=`dirname $(dirname $SOURCE_FILE)`
 echo $SOURCE_DIR
-ts-node --dir $SOURCE_DIR $SOURCE_DIR $1 $2
+ts-node --dir $SOURCE_DIR $SOURCE_DIR $@
