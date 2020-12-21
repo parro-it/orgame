@@ -6,6 +6,8 @@ import { compile } from 'handlebars';
 import { getLanguage, highlight } from 'highlight.js';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const mdCopy = require('markdown-it-copy');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const mdTaskLists = require('markdown-it-task-lists');
 
 const mdOptions = {
     highlight: function (str: string, lang: string) {
@@ -29,7 +31,7 @@ const mdCopyOptions = {
     attachText: '', // '' | some text append copyText， Such as: copyright | [add-after-1.2.0]
 };
 
-const md = markdownIt(mdOptions).use(mdCopy, mdCopyOptions);
+const md = markdownIt(mdOptions).use(mdCopy, mdCopyOptions).use(mdTaskLists);
 
 md.linkify.set({ fuzzyEmail: false });
 
