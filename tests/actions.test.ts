@@ -6,7 +6,6 @@ test('renderMarkdown transform markdown into html', async () => {
     const entry = {
         src: `${__dirname}/../fixtures/readme.md`,
         out: outFile,
-        layout: null,
     };
     await unlink(outFile).catch(() => 0);
     await renderMarkdown(entry);
@@ -27,7 +26,7 @@ test('renderMarkdown use a .layout file to use an handlebar layout', async () =>
     const entry = {
         src: `${__dirname}/../fixtures/readme.md`,
         out: outFile,
-        layout: await readFile(`${__dirname}/../fixtures/alayout`, 'utf-8'),
+        layoutPath: `${__dirname}/../fixtures/alayout`,
     };
     await unlink(outFile).catch(() => 0);
     await renderMarkdown(entry);
@@ -48,7 +47,6 @@ test('renderHTML transform handlerbars template into html', async () => {
     const entry = {
         src: `${__dirname}/../fixtures/client/index.html`,
         out: outFile,
-        layout: null,
     };
     await unlink(outFile).catch(() => 0);
     await renderHTML(entry);
@@ -62,7 +60,7 @@ test('renderHTML use layout file', async () => {
     const entry = {
         src: `${__dirname}/../fixtures/client/index.html`,
         out: outFile,
-        layout: await readFile(`${__dirname}/../fixtures/alayout`, 'utf-8'),
+        layoutPath: `${__dirname}/../fixtures/alayout`,
     };
     await unlink(outFile).catch(() => 0);
     await renderHTML(entry);

@@ -1,18 +1,22 @@
-import { mkdir, readdir, readFile, stat } from 'fs/promises';
+import { mkdir, readdir, stat } from 'fs/promises';
 import { resolve, extname, join } from 'path';
 import { copyAnyFile, renderMarkdown, renderHTML } from './actions';
 
 export type FileEntry = {
     src: string;
     out: string;
-    layout: string | null;
+    layoutPath?: string;
 };
 
 type RenderAction = (entry: FileEntry) => Promise<boolean>;
 
 export async function* getFiles(srcDir: string, outDir: string): AsyncIterable<FileEntry> {
     const dirents = await readdir(srcDir, { withFileTypes: true });
-    const layout = await readFile(join(srcDir, '.layout'), 'utf-8').catch(() => null);
+    const layoutMaybePath = join(srcDir, '.layout');
+    const hasLayout = await stat(layoutMaybePath)
+        .then(() => true)
+        .catch(() => false);
+    const layoutPath = hasLayout ? layoutMaybePath : undefined;
     await mkdir(outDir, { recursive: true }).catch(() => null);
 
     for (const dirent of dirents) {
@@ -24,7 +28,7 @@ export async function* getFiles(srcDir: string, outDir: string): AsyncIterable<F
         if (dirent.isDirectory()) {
             yield* getFiles(src, out);
         } else {
-            yield { src, out, layout };
+            yield { src, out, layoutPath };
         }
     }
 }
