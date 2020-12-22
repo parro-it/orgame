@@ -3,7 +3,7 @@ import { constants } from 'fs';
 import { readFile, writeFile, copyFile } from 'fs/promises';
 import markdownIt from 'markdown-it';
 import { FileEntry, rebuildNeeded } from './filetree';
-import { compile } from 'handlebars';
+import { Environment, FileSystemLoader } from 'nunjucks';
 import { getLanguage, highlight } from 'highlight.js';
 
 const mdCopy = require('markdown-it-copy');
@@ -47,10 +47,14 @@ const md = markdownIt(mdOptions)
     .use(implicitFigures, mdFiguresOptions);
 
 md.linkify.set({ fuzzyEmail: false });
+const root = `${process.cwd()}/src/layouts`;
+console.log(`configure nunjucks root to ${root}`);
+const env = new Environment(new FileSystemLoader(root), {});
 
 export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
     let needRebuild = true;
     const out = entry.out.replace(/\.md$/, '.html');
+
     const mdSourceNeedRebuild = await rebuildNeeded({ src: entry.src, out });
 
     if (entry.layoutPath) {
@@ -64,8 +68,7 @@ export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
 
         if (entry.layoutPath) {
             const layoutContent = await readFile(entry.layoutPath, 'utf-8');
-            const template = compile(layoutContent);
-            htmlContent = template({ content: htmlContent });
+            htmlContent = env.renderString(layoutContent, { mdContent: htmlContent });
         }
 
         await writeFile(out, htmlContent);
@@ -81,13 +84,12 @@ export async function copyAnyFile(entry: FileEntry): Promise<boolean> {
 
 export async function renderHTML(entry: FileEntry): Promise<boolean> {
     const htmlTemplateContent = await readFile(entry.src, 'utf-8');
-    const template = compile(htmlTemplateContent);
-    let htmlContent = template({});
+
+    let htmlContent = env.renderString(htmlTemplateContent, {});
 
     if (entry.layoutPath) {
         const layoutContent = await readFile(entry.layoutPath, 'utf-8');
-        const layoutTemplate = compile(layoutContent);
-        htmlContent = layoutTemplate({ content: htmlContent });
+        htmlContent = env.renderString(layoutContent, { content: htmlContent });
     }
     await writeFile(entry.out, htmlContent);
     return true;
