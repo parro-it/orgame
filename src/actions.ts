@@ -13,6 +13,9 @@ const implicitFigures = require('markdown-it-implicit-figures');
 
 const mdOptions = {
     highlight: function (str: string, lang: string) {
+        if (lang === 'njk') {
+            return `<pre>\n${str}\n</pre>`;
+        }
         if (lang && getLanguage(lang)) {
             return highlight(lang, str).value;
         }
@@ -41,7 +44,7 @@ const mdFiguresOptions = {
 };
 
 const md = markdownIt(mdOptions)
-    .use(mdCopy, mdCopyOptions)
+    //.use(mdCopy, mdCopyOptions)
     .use(mdTaskLists)
     .use(MarkdownItOEmbed)
     .use(implicitFigures, mdFiguresOptions);
@@ -49,11 +52,35 @@ const md = markdownIt(mdOptions)
 md.linkify.set({ fuzzyEmail: false });
 const root = `${process.cwd()}/src/layouts`;
 console.log(`configure nunjucks root to ${root}`);
-const env = new Environment(new FileSystemLoader(root), {});
+
+class MyLoader {
+    fs: FileSystemLoader;
+    layout: string;
+    layoutPath: string;
+
+    constructor(root: string) {
+        this.fs = new FileSystemLoader(root);
+        this.layout = '';
+        this.layoutPath = '';
+    }
+
+    getSource(name: string) {
+        if (name == '.layout') {
+            return {
+                src: this.layout,
+                path: this.layoutPath,
+                noCache: true,
+            };
+        }
+        return this.fs.getSource(name);
+    }
+}
 
 export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
     let needRebuild = true;
     const out = entry.out.replace(/\.md$/, '.html');
+    const myEnv = new MyLoader(root);
+    const env = new Environment(myEnv, {});
 
     const mdSourceNeedRebuild = await rebuildNeeded({ src: entry.src, out });
 
@@ -62,14 +89,18 @@ export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
     }
 
     if (needRebuild) {
+        if (entry.layoutPath) {
+            myEnv.layout = await readFile(entry.layoutPath, 'utf-8');
+            myEnv.layoutPath = entry.layoutPath;
+        } else {
+            myEnv.layout = '.layout file not found.';
+        }
+
         const mdContent = await readFile(entry.src, 'utf-8');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let htmlContent = await (md as any).renderAsync(mdContent);
+        const njkContent = await (md as any).renderAsync(mdContent);
 
-        if (entry.layoutPath) {
-            const layoutContent = await readFile(entry.layoutPath, 'utf-8');
-            htmlContent = env.renderString(layoutContent, { mdContent: htmlContent });
-        }
+        const htmlContent = env.renderString(njkContent, {});
 
         await writeFile(out, htmlContent);
         return true;
@@ -84,6 +115,7 @@ export async function copyAnyFile(entry: FileEntry): Promise<boolean> {
 
 export async function renderHTML(entry: FileEntry): Promise<boolean> {
     const htmlTemplateContent = await readFile(entry.src, 'utf-8');
+    const env = new Environment(new MyLoader(root), {});
 
     let htmlContent = env.renderString(htmlTemplateContent, {});
 
