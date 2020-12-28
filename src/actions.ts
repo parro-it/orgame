@@ -5,6 +5,7 @@ import markdownIt from 'markdown-it';
 import { FileEntry, rebuildNeeded } from './filetree';
 import { Environment, FileSystemLoader } from 'nunjucks';
 import { getLanguage, highlight } from 'highlight.js';
+import { dirname, isAbsolute, relative, resolve } from 'path';
 
 const mdCopy = require('markdown-it-copy');
 const mdTaskLists = require('markdown-it-task-lists');
@@ -14,7 +15,7 @@ const implicitFigures = require('markdown-it-implicit-figures');
 const mdOptions = {
     highlight: function (str: string, lang: string) {
         if (lang === 'njk') {
-            return `<pre>\n${str}\n</pre>`;
+            return `<pre style="display:none">\n${str}\n</pre>`;
         }
         if (lang && getLanguage(lang)) {
             return highlight(lang, str).value;
@@ -22,7 +23,8 @@ const mdOptions = {
 
         return ''; // use external default escaping
     },
-    linkify: true,
+    break: true,
+    linkify: false,
 };
 
 const mdCopyOptions = {
@@ -44,43 +46,44 @@ const mdFiguresOptions = {
 };
 
 const md = markdownIt(mdOptions)
-    //.use(mdCopy, mdCopyOptions)
+    .use(mdCopy, mdCopyOptions)
     .use(mdTaskLists)
     .use(MarkdownItOEmbed)
     .use(implicitFigures, mdFiguresOptions);
 
-md.linkify.set({ fuzzyEmail: false });
-const root = `${process.cwd()}/src/layouts`;
+//md.linkify.set({ fuzzyEmail: false });
+const root = process.cwd();
+const env = new Environment(new FileSystemLoader(root), {});
+
 console.log(`configure nunjucks root to ${root}`);
 
-class MyLoader {
-    fs: FileSystemLoader;
-    layout: string;
-    layoutPath: string;
+type MetaType = {
+    title: string;
+    subtitle: string;
+    published: Date;
+    draft: boolean;
+    tags: Array<string>;
+    categories: Array<string>;
+};
 
-    constructor(root: string) {
-        this.fs = new FileSystemLoader(root);
-        this.layout = '';
-        this.layoutPath = '';
-    }
+export const metaRegistry: {
+    entries: Record<string, MetaType>;
+    root: string;
+} = { entries: {}, root: '' };
 
-    getSource(name: string) {
-        if (name == '.layout') {
-            return {
-                src: this.layout,
-                path: this.layoutPath,
-                noCache: true,
-            };
-        }
-        return this.fs.getSource(name);
-    }
+function defaultMeta(): MetaType {
+    return {
+        title: '',
+        subtitle: '',
+        published: new Date(),
+        draft: true,
+        tags: ['untagged'],
+        categories: ['uncategorised'],
+    };
 }
-
 export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
     let needRebuild = true;
     const out = entry.out.replace(/\.md$/, '.html');
-    const myEnv = new MyLoader(root);
-    const env = new Environment(myEnv, {});
 
     const mdSourceNeedRebuild = await rebuildNeeded({ src: entry.src, out });
 
@@ -89,20 +92,60 @@ export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
     }
 
     if (needRebuild) {
-        if (entry.layoutPath) {
-            myEnv.layout = await readFile(entry.layoutPath, 'utf-8');
-            myEnv.layoutPath = entry.layoutPath;
-        } else {
-            myEnv.layout = '.layout file not found.';
-        }
-
         const mdContent = await readFile(entry.src, 'utf-8');
+        let metaVal: MetaType;
+        if (metaRegistry.entries.hasOwnProperty(entry.src)) {
+            metaVal = metaRegistry.entries[entry.src] || defaultMeta();
+        } else {
+            metaVal = defaultMeta();
+        }
+        const ctx = {
+            layout: '',
+            meta: metaVal,
+            registry: metaRegistry,
+
+            useLayout(path: string) {
+                //console.log('NEW LAYOUT', path);
+                ctx.layout = path;
+            },
+            title(text: string) {
+                ctx.meta.title = text;
+            },
+            subtitle(text: string) {
+                ctx.meta.subtitle = text;
+            },
+            published(on: Date) {
+                ctx.meta.published = on;
+            },
+
+            draft(is: boolean) {
+                ctx.meta.draft = is;
+            },
+
+            tags(list: Array<string>) {
+                ctx.meta.tags = list;
+            },
+
+            categories(list: Array<string>) {
+                ctx.meta.categories = list;
+            },
+        };
+
+        //console.log('LAYOUT BEFORE', ctx.layout);
+        const htmlContent = env.renderString(mdContent, ctx);
+        //console.log('LAYOUT AFTER', ctx.layout);
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const njkContent = await (md as any).renderAsync(mdContent);
+        let content = await (md as any).renderAsync(htmlContent);
 
-        const htmlContent = env.renderString(njkContent, {});
-
-        await writeFile(out, htmlContent);
+        if (ctx.layout !== '') {
+            if (!isAbsolute(ctx.layout)) {
+                ctx.layout = resolve(dirname(entry.src), ctx.layout);
+            }
+            content = env.render(ctx.layout, { content });
+        }
+        await writeFile(out, content);
+        metaRegistry.entries[relative(metaRegistry.root, entry.src)] = ctx.meta;
         return true;
     }
     return false;
@@ -114,15 +157,7 @@ export async function copyAnyFile(entry: FileEntry): Promise<boolean> {
 }
 
 export async function renderHTML(entry: FileEntry): Promise<boolean> {
-    const htmlTemplateContent = await readFile(entry.src, 'utf-8');
-    const env = new Environment(new MyLoader(root), {});
-
-    let htmlContent = env.renderString(htmlTemplateContent, {});
-
-    if (entry.layoutPath) {
-        const layoutContent = await readFile(entry.layoutPath, 'utf-8');
-        htmlContent = env.renderString(layoutContent, { content: htmlContent });
-    }
+    const htmlContent = env.render(entry.src, {});
     await writeFile(entry.out, htmlContent);
     return true;
 }
