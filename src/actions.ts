@@ -6,6 +6,7 @@ import { FileEntry, rebuildNeeded } from './filetree';
 import { Environment, FileSystemLoader } from 'nunjucks';
 import { getLanguage, highlight } from 'highlight.js';
 import { dirname, isAbsolute, relative, resolve } from 'path';
+import { pathToFileURL } from 'url';
 
 const mdCopy = require('markdown-it-copy');
 const mdTaskLists = require('markdown-it-task-lists');
@@ -60,6 +61,9 @@ console.log(`configure nunjucks root to ${root}`);
 type MetaType = {
     title: string;
     subtitle: string;
+    srcPath: string;
+    outPath: string;
+    url: string;
     published: Date;
     draft: boolean;
     tags: Array<string>;
@@ -71,7 +75,7 @@ export const metaRegistry: {
     root: string;
 } = { entries: {}, root: '' };
 
-function defaultMeta(): MetaType {
+function defaultMeta(entry: FileEntry, out: string): MetaType {
     return {
         title: '',
         subtitle: '',
@@ -79,12 +83,14 @@ function defaultMeta(): MetaType {
         draft: true,
         tags: ['untagged'],
         categories: ['uncategorised'],
+        srcPath: entry.src,
+        outPath: out,
+        url: relative(metaRegistry.root, out).replace(/^docs\//, ''),
     };
 }
 export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
     let needRebuild = true;
     const out = entry.out.replace(/\.md$/, '.html');
-
     const mdSourceNeedRebuild = await rebuildNeeded({ src: entry.src, out });
 
     if (entry.layoutPath) {
@@ -95,9 +101,9 @@ export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
         const mdContent = await readFile(entry.src, 'utf-8');
         let metaVal: MetaType;
         if (metaRegistry.entries.hasOwnProperty(entry.src)) {
-            metaVal = metaRegistry.entries[entry.src] || defaultMeta();
+            metaVal = metaRegistry.entries[entry.src] || defaultMeta(entry, out);
         } else {
-            metaVal = defaultMeta();
+            metaVal = defaultMeta(entry, out);
         }
         const ctx = {
             layout: '',
