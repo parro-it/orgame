@@ -148,7 +148,8 @@ export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
             if (!isAbsolute(ctx.layout)) {
                 ctx.layout = resolve(dirname(entry.src), ctx.layout);
             }
-            content = env.render(ctx.layout, { content });
+            const layoutCtx = { content, meta: ctx.meta };
+            content = env.render(ctx.layout, layoutCtx);
         }
         await writeFile(out, content);
         metaRegistry.entries[relative(metaRegistry.root, entry.src)] = ctx.meta;
