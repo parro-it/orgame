@@ -18,8 +18,12 @@ import { Environment, FileSystemLoader } from 'nunjucks';
 
 const mdOptions = {
     highlight: function (str: string, lang: string) {
+        console.log('CIAO', lang, str);
         if (lang === 'njk') {
             return `<pre style="display:none">\n${str}\n</pre>`;
+        }
+        if (lang === 'raw') {
+            return `<div>${str}</div>`;
         }
         if (lang && getLanguage(lang)) {
             return highlight(lang, str).value;
@@ -29,6 +33,7 @@ const mdOptions = {
     },
     break: true,
     linkify: false,
+    html: true,
 };
 
 const mdCopyOptions = {
@@ -70,12 +75,16 @@ const env = new Environment(new FileSystemLoader(root), {});
 console.log(`configure nunjucks root to ${root}`);
 
 type MetaType = {
+    headingCaption: string;
+    headingFigure: string;
     title: string;
     subtitle: string;
     srcPath: string;
     outPath: string;
     url: string;
-    published: Date;
+    heading: string;
+    published: string;
+    publishedFormatted: string;
     draft: boolean;
     tags: Array<string>;
     categories: Array<string>;
@@ -87,10 +96,15 @@ export const metaRegistry: {
 } = { entries: {}, root: '' };
 
 function defaultMeta(entry: FileEntry, out: string): MetaType {
+    const published = new Date().toISOString();
     return {
+        headingCaption: '',
+        headingFigure: '',
         title: '',
         subtitle: '',
-        published: new Date(),
+        heading: '',
+        published,
+        publishedFormatted: formatPublished(published),
         draft: true,
         tags: ['untagged'],
         categories: ['uncategorised'],
@@ -103,7 +117,8 @@ export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
     let needRebuild = true;
     const out = entry.out.replace(/\.md$/, '.html');
     const mdSourceNeedRebuild = await rebuildNeeded({ src: entry.src, out });
-
+    const d = new Date();
+    d.toLocaleDateString();
     if (entry.layoutPath) {
         needRebuild = mdSourceNeedRebuild || (await rebuildNeeded({ src: entry.layoutPath, out }));
     }
@@ -131,10 +146,16 @@ export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
             subtitle(text: string) {
                 ctx.meta.subtitle = text;
             },
-            published(on: Date) {
+            published(on: string) {
                 ctx.meta.published = on;
+                const formatted = formatPublished(on);
+                //console.log({ dtOn });
+                ctx.meta.publishedFormatted = formatted;
             },
-
+            heading(caption: string, figureSrc: string) {
+                ctx.meta.headingCaption = caption;
+                ctx.meta.headingFigure = figureSrc;
+            },
             draft(is: boolean) {
                 ctx.meta.draft = is;
             },
@@ -167,6 +188,13 @@ export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
         return true;
     }
     return false;
+}
+
+function formatPublished(on: string) {
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    const dtOn = new Date(Date.parse(on));
+    const formatted = dtOn.toLocaleString('en-US', options);
+    return formatted;
 }
 
 export async function copyAnyFile(entry: FileEntry): Promise<boolean> {
