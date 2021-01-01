@@ -1,17 +1,20 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { constants } from 'fs';
 import { readFile, writeFile, copyFile } from 'fs/promises';
-import markdownIt from 'markdown-it';
-import { FileEntry, rebuildNeeded } from './filetree';
-import { Environment, FileSystemLoader } from 'nunjucks';
-import { getLanguage, highlight } from 'highlight.js';
 import { dirname, isAbsolute, relative, resolve } from 'path';
-import { pathToFileURL } from 'url';
+
+import markdownIt from 'markdown-it';
+import anchor from 'markdown-it-anchor';
+import toc from 'markdown-it-toc-done-right';
+import { getLanguage, highlight } from 'highlight.js';
 
 const mdCopy = require('markdown-it-copy');
 const mdTaskLists = require('markdown-it-task-lists');
 const MarkdownItOEmbed = require('markdown-it-oembed');
 const implicitFigures = require('markdown-it-implicit-figures');
+
+import { FileEntry, rebuildNeeded } from './filetree';
+import { Environment, FileSystemLoader } from 'nunjucks';
 
 const mdOptions = {
     highlight: function (str: string, lang: string) {
@@ -46,11 +49,19 @@ const mdFiguresOptions = {
     link: false, // <a href="img.png"><img src="img.png"></a>, default: false
 };
 
+const anchorOptyions = {
+    permalink: true,
+    permalinkBefore: true,
+    permalinkSymbol: '',
+};
+
 const md = markdownIt(mdOptions)
     .use(mdCopy, mdCopyOptions)
     .use(mdTaskLists)
     .use(MarkdownItOEmbed)
-    .use(implicitFigures, mdFiguresOptions);
+    .use(implicitFigures, mdFiguresOptions)
+    .use(anchor, anchorOptyions)
+    .use(toc);
 
 //md.linkify.set({ fuzzyEmail: false });
 const root = process.cwd();
