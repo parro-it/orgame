@@ -26,6 +26,7 @@ async function start() {
     const metaFilePath = join(metaRegistry.root, 'meta.json');
     const meta = await readFile(metaFilePath, 'utf-8');
     metaRegistry.entries = JSON.parse(meta);
+
     await Promise.all(srcDirs.map((srcDir) => build(srcDir, outDir)));
     const updatedMeta = JSON.stringify(metaRegistry.entries, null, 4);
     await writeFile(metaFilePath, updatedMeta);

@@ -113,6 +113,22 @@ function defaultMeta(entry: FileEntry, out: string): MetaType {
         url: relative(metaRegistry.root, out).replace(/^docs\//, ''),
     };
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const isBefore = (a: [string, any], b: [string, any]) => {
+    if (a[1].published === b[1].published) {
+        return 0;
+    }
+    if (a[1].published < b[1].published) {
+        return -1;
+    }
+    return 1;
+};
+
+env.addFilter('sortByDate', (posts) => {
+    return Object.fromEntries(Object.entries(posts).sort(isBefore));
+});
+
 export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
     let needRebuild = true;
     const out = entry.out.replace(/\.md$/, '.html');
@@ -135,7 +151,9 @@ export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
             layout: '',
             meta: metaVal,
             registry: metaRegistry,
-
+            sortByDate(a: MetaType, b: MetaType) {
+                return a.published < b.published;
+            },
             useLayout(path: string) {
                 //console.log('NEW LAYOUT', path);
                 ctx.layout = path;
@@ -169,7 +187,7 @@ export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
             },
         };
 
-        //console.log('LAYOUT BEFORE', ctx.layout);
+        //console.log('LAYOUT BEFORE', mdContent);
         const htmlContent = env.renderString(mdContent, ctx);
         //console.log('LAYOUT AFTER', ctx.layout);
 
