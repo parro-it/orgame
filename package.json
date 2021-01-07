@@ -8,6 +8,9 @@
     "start": "ts-node . ./fixtures /tmp/fake",
     "lint": "eslint */**/*.{js,ts,tsx}"
   },
+  "bin": {
+    "orgame": "bin/orgame"
+  },
   "keywords": [],
   "author": "",
   "license": "MIT",
