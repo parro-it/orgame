@@ -61,7 +61,7 @@ const anchorOptyions = {
 };
 
 const md = markdownIt(mdOptions)
-    .use(mdCopy, mdCopyOptions)
+    //.use(mdCopy, mdCopyOptions)
     .use(mdTaskLists)
     .use(MarkdownItOEmbed)
     .use(implicitFigures, mdFiguresOptions)
@@ -132,21 +132,29 @@ env.addFilter('sortByDate', (posts) => {
 export async function renderMarkdown(entry: FileEntry): Promise<boolean> {
     let needRebuild = true;
     const out = entry.out.replace(/\.md$/, '.html');
+    entry.out = out;
     const mdSourceNeedRebuild = await rebuildNeeded({ src: entry.src, out });
     const d = new Date();
     d.toLocaleDateString();
-    if (entry.layoutPath) {
+    if (typeof entry.layoutPath !== 'undefined') {
         needRebuild = mdSourceNeedRebuild || (await rebuildNeeded({ src: entry.layoutPath, out }));
     }
 
     if (needRebuild) {
         const mdContent = await readFile(entry.src, 'utf-8');
         let metaVal: MetaType;
-        if (metaRegistry.entries.hasOwnProperty(entry.src)) {
-            metaVal = metaRegistry.entries[entry.src] || defaultMeta(entry, out);
+        if (metaRegistry.entries.hasOwnProperty(relative(metaRegistry.root, entry.src))) {
+            metaVal = metaRegistry.entries[relative(metaRegistry.root, entry.src)] || defaultMeta(entry, out);
+            if (typeof metaVal.published === 'undefined') {
+                metaVal.published = new Date().toISOString();
+                const formatted = formatPublished(metaVal.published);
+                //console.log({ dtOn });
+                metaVal.publishedFormatted = formatted;
+            }
         } else {
             metaVal = defaultMeta(entry, out);
         }
+
         const ctx = {
             layout: '',
             meta: metaVal,
