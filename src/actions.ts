@@ -18,7 +18,7 @@ import { Environment, FileSystemLoader } from 'nunjucks';
 
 const mdOptions = {
     highlight: function (str: string, lang: string) {
-        console.log('CIAO', lang, str);
+        //console.log('CIAO', lang, str);
         if (lang === 'njk') {
             return `<pre style="display:none">\n${str}\n</pre>`;
         }
